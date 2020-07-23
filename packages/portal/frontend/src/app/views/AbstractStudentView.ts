@@ -81,12 +81,12 @@ export abstract class AbstractStudentView implements IView {
         if (response.status === 200) {
             Log.trace('AbstractStudentView::fetchData( ' + endpoint + ' ) - 200 received');
             const json = await response.json();
-            Log.trace('AbstractStudentView::fetchData( ' + endpoint + ' ) - payload: ' + JSON.stringify(json));
+            Log.trace('AbstractStudentView::fetchData( ' + endpoint + ' ) - payload: ', json);
             if (typeof json.success !== 'undefined') {
-                Log.trace('AbstractStudentView::fetchData( ' + endpoint + ' ) - success: ' + json.success);
+                Log.trace('AbstractStudentView::fetchData( ' + endpoint + ' ) - success: ', json.success);
                 return json.success;
             } else {
-                Log.trace('AbstractStudentView::fetchData( ' + endpoint + ' ) - ERROR: ' + json.failure.message);
+                Log.trace('AbstractStudentView::fetchData( ' + endpoint + ' ) - ERROR: ', json.failure.message);
                 throw new Error(json.failure.message);
             }
         } else {

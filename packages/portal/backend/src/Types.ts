@@ -139,6 +139,8 @@ export interface Team {
         sdmmd1?: boolean,
         sdmmd2?: boolean,
         sdmmd3?: boolean,
+
+        [key: string]: any,
     };
 }
 

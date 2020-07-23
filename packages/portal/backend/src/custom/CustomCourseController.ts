@@ -1,7 +1,8 @@
 import Log from "../../../../common/Log";
+import {Leaderboard} from "../../../../common/types/CS310Types";
 import {TransportKind} from "../../../../common/types/PortalTypes";
 import {CourseController} from "../controllers/CourseController";
-import {DatabaseController} from "../controllers/DatabaseController";
+import {DatabaseController, QueryKind} from "../controllers/DatabaseController";
 import {IGitHubController} from "../controllers/GitHubController";
 import {RepositoryController} from "../controllers/RepositoryController";
 import {TeamController} from "../controllers/TeamController";
@@ -236,5 +237,102 @@ export class CustomCourseController extends CourseController {
             }
         }
         return custom;
+    }
+
+    public async getLeaderboards(): Promise<Leaderboard[]> {
+        const course = await this.dbc.getCourseRecord();
+        const defaultDeliv = course.defaultDeliverableId;
+        if (defaultDeliv === null) {
+            return [];
+        } else {
+            const results = await this.getLeaderboardResults(defaultDeliv);
+        }
+        return [
+            {
+                title: "Most lines of code",
+                rows: [
+                    {
+                        name: "CoolGuyTeam",
+                        value: 20
+                    },
+                    {
+                        name: "OtherTeam",
+                        value: 10,
+                    }
+                ]
+            },
+            {
+                title: "Least lines of code",
+                rows: [
+                    {
+                        name: "OtherTeam",
+                        value: 10,
+                    },
+                    {
+                        name: "CoolGuyTeam",
+                        value: 20
+                    }
+                ]
+            },
+            {
+                title: "Fastest Execution in Seconds",
+                rows: [
+                    {
+                        name: "OtherTeam",
+                        value: 1.57,
+                    },
+                    {
+                        name: "CoolGuyTeam",
+                        value: 2.28,
+                    }
+                ]
+            },
+            {
+                title: "Most tests",
+                rows: [
+                    {
+                        name: "CoolGuyTeam",
+                        value: 2,
+                    },
+                    {
+                        name: "OtherTeam",
+                        value: 0,
+                    }
+                ]
+            }
+        ];
+    }
+
+    private async getLeaderboardResults(deliv: string) {
+        const start = Date.now();
+        Log.trace("DatabaseController::getGradedResults() - start");
+        // TODO add to the pipeline
+        const pipeline = [
+            { $match : { delivId : deliv } },
+            { $group: { _id: '$URL' } },
+            { $lookup:
+                    {
+                        from: 'results',
+                        localField: '_id',
+                        foreignField: 'commitURL',
+                        as: 'results'
+                    }
+            },
+            { $project: { result: { $arrayElemAt: ["$results", 0] } } },
+            { $lookup:
+                    {
+                        from: 'repositories',
+                        localField: 'repoId',
+                        foreignField: 'id',
+                        as: 'results'
+                    }
+            },
+            { $project: { result: { $arrayElemAt: ["$results", 0] } } },
+        ];
+
+        const collection = await this.dbc.getCollection('grades', QueryKind.SLOW);
+        const results = (await collection.aggregate(pipeline).toArray()).map((r) => r.result);
+        results.forEach((r) => delete r._id);
+        return results;
     }
 }

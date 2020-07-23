@@ -42,6 +42,25 @@
                 Your project team is:&nbsp;<span id="studentPartnerTeamName"></span>.
             </ons-list-item>
         </div>
+        <div id="leaderboardContainer" style="display: none;">
+            <ons-list-header>Leaderboards</ons-list-header>
+            <div id="leaderboardEnrolment" style="display: none;">
+                <ons-list-item expandable>
+                    <div class="left settingIcon">
+                        <ons-icon style="padding-right: 1em;" icon="fa-cogs"></ons-icon>
+                        Enrol in the leaderboard program
+                    </div>
+                    <div>
+                        <ons-input class="settingTextInput" id="enrolLeaderboardText"></ons-input>
+                        <ons-button id="enrolLeaderboardButton">Enrol</ons-button>
+                    </div>
+                    <div class="expandable-content">
+                        Specify your team name here. This is the team name that all other students will see on the public leaderboards.
+                    </div>
+                </ons-list-item>
+            </div>
+            <div id="leaderboardTableList"></div>
+        </div>
     </ons-list>
 
 </ons-page>
