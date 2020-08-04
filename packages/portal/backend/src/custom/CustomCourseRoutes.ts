@@ -118,8 +118,10 @@ export default class CustomCourseRoutes implements IREST {
                 } else {
                     throw new Error('Could not get a result from purgomalum');
                 }
-                if (leaderboardName !== defaultName && /team[0-9][0-9][0-9]/.test(leaderboardName)) {
-                    // TODO check if this name is taken by another team?
+
+                // again, https://i.imgur.com/PCGct7A.png
+                const cc = await Factory.getCourseController() as CustomCourseController;
+                if (leaderboardName !== defaultName && !(await cc.isValidLeaderboardName(leaderboardName))) {
                     throw new Error("Cannot take another team's name");
                 }
             } else {

@@ -245,94 +245,69 @@ export class CustomCourseController extends CourseController {
         if (defaultDeliv === null) {
             return [];
         } else {
-            const results = await this.getLeaderboardResults(defaultDeliv);
+            const results = await this.getLeaderboardData(defaultDeliv);
+            return this.formatLeaderboardData(results);
         }
-        return [
-            {
-                title: "Most lines of code",
-                rows: [
-                    {
-                        name: "CoolGuyTeam",
-                        value: 20
-                    },
-                    {
-                        name: "OtherTeam",
-                        value: 10,
-                    }
-                ]
-            },
-            {
-                title: "Least lines of code",
-                rows: [
-                    {
-                        name: "OtherTeam",
-                        value: 10,
-                    },
-                    {
-                        name: "CoolGuyTeam",
-                        value: 20
-                    }
-                ]
-            },
-            {
-                title: "Fastest Execution in Seconds",
-                rows: [
-                    {
-                        name: "OtherTeam",
-                        value: 1.57,
-                    },
-                    {
-                        name: "CoolGuyTeam",
-                        value: 2.28,
-                    }
-                ]
-            },
-            {
-                title: "Most tests",
-                rows: [
-                    {
-                        name: "CoolGuyTeam",
-                        value: 2,
-                    },
-                    {
-                        name: "OtherTeam",
-                        value: 0,
-                    }
-                ]
-            }
-        ];
     }
 
-    private async getLeaderboardResults(deliv: string) {
-        const start = Date.now();
-        Log.trace("DatabaseController::getGradedResults() - start");
-        // TODO add to the pipeline
+    private async getLeaderboardData(deliv: string) {
         const pipeline = [
             { $match : { delivId : deliv } },
             { $group: { _id: '$URL' } },
-            { $lookup:
-                    {
-                        from: 'results',
-                        localField: '_id',
-                        foreignField: 'commitURL',
-                        as: 'results'
-                    }
-            },
-            { $project: { result: { $arrayElemAt: ["$results", 0] } } },
-            { $lookup:
-                    {
-                        from: 'repositories',
-                        localField: 'repoId',
-                        foreignField: 'id',
-                        as: 'results'
-                    }
-            },
-            { $project: { result: { $arrayElemAt: ["$results", 0] } } },
+            { $lookup: { from: 'results', localField: '_id', foreignField: 'commitURL', as: 'results' } },
+            { $project: { result: { $arrayElemAt: ['$results', 0] } } },
+            { $lookup: { from: 'teams', localField: 'result.repoId', foreignField: 'id', as: 'teams' } },
+            { $project: { result: 1, team: { $arrayElemAt: ['$teams', 0] } } },
+            { $project: { '_id': 0, 'result.custom': 1, 'team.custom': 1 } }
         ];
-
         const collection = await this.dbc.getCollection('grades', QueryKind.SLOW);
-        const results = (await collection.aggregate(pipeline).toArray()).map((r) => r.result);
-        results.forEach((r) => delete r._id);
-        return results;
+        const documents = await collection.aggregate(pipeline).toArray();
+        const leaderboardEntries = documents.map((document) => ({
+            leaderboardEntries: (document?.result?.custom?.leaderboardEntries || {}),
+            leaderboardEnrolment: document?.team?.custom?.leaderboardEnrolment,
+            leaderboardName: document?.team?.custom?.leaderboardName,
+        }));
+        return leaderboardEntries.filter((entry) => entry.leaderboardEnrolment && entry.leaderboardName);
+    }
+
+    private formatLeaderboardData(results: Array<{leaderboardName: string, leaderboardEntries: {[key: string]: any}}>): Leaderboard[] {
+        const leaderboards: any = {};
+
+        for (const result of results) {
+            const {leaderboardName, leaderboardEntries} = result;
+            for (const [key, value] of Object.entries(leaderboardEntries)) {
+                if (!leaderboards.hasOwnProperty(key)) {
+                    leaderboards[key] = [];
+                }
+                leaderboards[key].push({name: leaderboardName, value});
+            }
+        }
+
+        const asc = (a: any, b: any) => a.value - b.value;
+        const desc = (a: any, b: any) => b.value = a.value;
+
+        const sorting: any = {
+            "Fastest Execution in Seconds": asc,
+            "Least lines of code": asc,
+            "Most Lines of code": desc,
+        };
+
+        return Object.keys(leaderboards).map((key) => ({
+            title: key,
+            rows: leaderboards[key].sort(sorting[key])
+        }));
+    }
+
+    public async isValidLeaderboardName(leaderboardName: string): Promise<boolean> {
+        if (/team[0-9][0-9][0-9]/.test(leaderboardName)) {
+            // Shouldn't use a team's default name.
+            return false;
+        }
+        const pipeline = [{ $project: { _id: 0, custom: 1 } }];
+        const collection = await this.dbc.getCollection('teams', QueryKind.SLOW);
+        const documents = await collection.aggregate(pipeline).toArray();
+        const leaderboardTeams = documents
+            .filter((document) => document?.custom?.leaderboardEnrolment && document?.custom?.leaderboardName);
+        return leaderboardTeams.every((team) => team.custom.leaderboardName !== leaderboardName);
     }
 }
