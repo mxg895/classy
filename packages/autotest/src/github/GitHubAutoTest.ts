@@ -458,17 +458,17 @@ export class GitHubAutoTest extends AutoTest implements IGitHubTestManager {
             info.personId + " for commit: " + info.commitURL + "; null previous: " + (previousRequest === null) +
             "; null delay: " + (feedbackDelay === null));
 
-        if (shouldCharge === true && previousRequest === null && feedbackDelay !== null && !info.flags.includes('#schedule')) {
+        if (shouldCharge === true && previousRequest === null && feedbackDelay !== null) { // && !info.flags.includes('#schedule')) {
             Log.info("GitHubAutoTest::handleCommentStudent(..) - too early for: " + info.personId + "; must wait: " +
                 feedbackDelay + "; SHA: " + info.commitURL);
             // NOPE, not yet (this is the most common case; feedback requested without time constraints)
             const msg = "You must wait " + feedbackDelay + " before requesting feedback.";
             await this.postToGitHub(info, {url: info.postbackURL, message: msg});
-        } else if (shouldCharge === true && previousRequest === null && feedbackDelay !== null && info.flags.includes('#schedule')) {
-            Log.info("GitHubAutoTest::handleCommentStudent(..) - too early for: " + info.personId + "; Scheduling for: " +
-                feedbackDelay + "; SHA: " + info.commitURL);
-            // Not yet, but student has requested that autotest be called at the first possible moment.
-            await this.processCommentScheduleRequest(info, res);
+        // } else if (shouldCharge === true && previousRequest === null && feedbackDelay !== null && info.flags.includes('#schedule')) {
+        //     Log.info("GitHubAutoTest::handleCommentStudent(..) - too early for: " + info.personId + "; Scheduling for: " +
+        //         feedbackDelay + "; SHA: " + info.commitURL);
+        //     // Not yet, but student has requested that autotest be called at the first possible moment.
+        //     await this.processCommentScheduleRequest(info, res);
         } else if (previousRequest !== null) {
             Log.info("GitHubAutoTest::handleCommentStudent(..) - feedback previously given for: " +
                 info.personId + "; deliv: " + info.delivId + "; SHA: " + info.commitURL);
